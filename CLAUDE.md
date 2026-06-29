@@ -154,7 +154,8 @@ try {
 
 ## AI Usage
 
-- Model: `claude-sonnet-4-6` untuk segment picker dan caption gen
+- Provider via `AI_PROVIDER` env: `anthropic` (default) atau `openai`. Satu titik di `src/ai/call-ai.ts` (provider impl di `src/ai/providers/`). Model via `ANTHROPIC_MODEL` / `OPENAI_MODEL`.
+- Model default: `claude-sonnet-4-6` (Anthropic) / `gpt-4o-mini` (OpenAI) untuk segment picker dan caption gen
 - SELALU validasi output AI dengan Zod sebelum digunakan
 - JANGAN log full prompt — bisa mengandung transcript sensitif
 - Gunakan `callAI<T>(prompt, schema)` helper di `src/ai/call-ai.ts`

@@ -1,19 +1,17 @@
-// Generic Claude caller with Zod-validated output. CLAUDE.md invariants #10, AI Usage section.
+// Generic AI caller with Zod-validated output. CLAUDE.md invariants #10, AI Usage section.
+// - Provider chosen by AI_PROVIDER (anthropic default, or openai).
 // - DO NOT log full prompt (may contain sensitive transcripts).
 // - Strip ``` fences before JSON.parse.
 // - Retry once on JSON / Zod failure with a "fix your output" follow-up.
-import Anthropic from '@anthropic-ai/sdk';
 import type { ZodSchema } from 'zod';
 import { AIOutputInvalidError } from '@clipflow/shared';
 import { loadEnv } from '../lib/env.js';
+import { complete as anthropicComplete } from './providers/anthropic.js';
+import { complete as openaiComplete } from './providers/openai.js';
+import type { ChatTurn, Complete } from './providers/types.js';
 
-const MODEL = 'claude-sonnet-4-6';
-
-let cached: Anthropic | null = null;
-function client(): Anthropic {
-  if (cached) return cached;
-  cached = new Anthropic({ apiKey: loadEnv().ANTHROPIC_API_KEY });
-  return cached;
+function pickProvider(): Complete {
+  return loadEnv().AI_PROVIDER === 'openai' ? openaiComplete : anthropicComplete;
 }
 
 function stripFences(s: string): string {
@@ -30,48 +28,35 @@ export async function callAI<T>(opts: {
   systemPrompt?: string;
 }): Promise<T> {
   const { prompt, schema, maxTokens = 2048, systemPrompt } = opts;
-  const c = client();
+  const complete = pickProvider();
+  const sys = systemPrompt ? { system: systemPrompt } : {};
 
-  const baseMsg = {
-    model: MODEL,
-    max_tokens: maxTokens,
-    ...(systemPrompt ? { system: systemPrompt } : {}),
-  };
+  const messages: ChatTurn[] = [{ role: 'user', content: prompt }];
+  const firstText = await complete({ messages, maxTokens, ...sys });
 
-  const first = await c.messages.create({
-    ...baseMsg,
-    messages: [{ role: 'user', content: prompt }],
-  });
-  const firstText = extractText(first);
+  const first = tryParse(firstText, schema);
+  if (first.ok) return first.value;
 
-  let parsed = tryParse(firstText, schema);
-  if (parsed.ok) return parsed.value;
-
-  // Retry once with a tight repair prompt — DO NOT include the original prompt.
-  const retry = await c.messages.create({
-    ...baseMsg,
-    messages: [
-      { role: 'user', content: prompt },
-      { role: 'assistant', content: firstText },
-      {
-        role: 'user',
-        content: `Your previous reply failed validation: ${parsed.error}. Return JSON only, matching the schema. No prose.`,
-      },
-    ],
-  });
-  const retryText = extractText(retry);
+  // Retry once with a tight repair turn — do NOT resend extra context.
+  const repair: ChatTurn[] = [
+    ...messages,
+    { role: 'assistant', content: firstText },
+    {
+      role: 'user',
+      content: `Your previous reply failed validation: ${first.error}. Return JSON only, matching the schema. No prose.`,
+    },
+  ];
+  const retryText = await complete({ messages: repair, maxTokens, ...sys });
   const second = tryParse(retryText, schema);
   if (second.ok) return second.value;
 
   throw new AIOutputInvalidError(`AI output failed validation twice: ${second.error}`);
 }
 
-function extractText(msg: Anthropic.Message): string {
-  const part = msg.content.find(p => p.type === 'text');
-  return part && 'text' in part ? part.text : '';
-}
-
-function tryParse<T>(raw: string, schema: ZodSchema<T>): { ok: true; value: T } | { ok: false; error: string } {
+function tryParse<T>(
+  raw: string,
+  schema: ZodSchema<T>,
+): { ok: true; value: T } | { ok: false; error: string } {
   let json: unknown;
   try {
     json = JSON.parse(stripFences(raw));

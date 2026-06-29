@@ -22,8 +22,21 @@ const EnvSchema = z.object({
   TOKEN_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, 'must be 64 hex chars (32 bytes)'),
   SESSION_COOKIE_SECRET: z.string().min(16),
 
+  // AI provider for segment picker + caption gen. Default Claude (per CLAUDE.md);
+  // set AI_PROVIDER=openai to run on OpenAI instead.
+  AI_PROVIDER: z.enum(['anthropic', 'openai']).default('anthropic'),
   ANTHROPIC_API_KEY: z.string().min(1),
+  ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),
   OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+}).superRefine((env, ctx) => {
+  if (env.AI_PROVIDER === 'openai' && !env.OPENAI_API_KEY) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['OPENAI_API_KEY'],
+      message: 'required when AI_PROVIDER=openai',
+    });
+  }
 });
 
 export type Env = z.infer<typeof EnvSchema>;
