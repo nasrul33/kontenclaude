@@ -1,0 +1,43 @@
+{
+  "name": "clipflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ClipFlow — Video-to-Social Clip Automation",
+  "engines": { "node": ">=24.0.0", "pnpm": ">=10.0.0" },
+  "scripts": {
+    "dev":           "docker compose -f infra/docker-compose.yml up -d && pnpm --parallel --filter './apps/*' dev",
+    "build":         "pnpm --recursive build",
+    "test":          "vitest run --reporter=verbose",
+    "test:e2e":      "playwright test",
+    "lint":          "eslint . --max-warnings 0",
+    "typecheck":     "tsc --noEmit",
+    "db:migrate":    "pnpm --filter @clipflow/db run migrate",
+    "db:generate":   "pnpm --filter @clipflow/db run generate",
+    "db:studio":     "pnpm --filter @clipflow/db run studio",
+    "db:seed":       "pnpm --filter @clipflow/db exec tsx prisma/seed.ts",
+    "worker:dev":    "pnpm --filter @clipflow/api tsx watch src/worker-entry.ts",
+    "worker:inspect":"pnpm --filter @clipflow/api tsx src/lib/queue-inspector.ts",
+    "infra:up":      "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down":    "docker compose -f infra/docker-compose.yml down",
+    "infra:logs":    "docker compose -f infra/docker-compose.yml logs -f",
+    "infra:init":    "bash infra/init-minio.sh"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/engines", "esbuild", "msgpackr-extract", "prisma", "sharp"],
+    "overrides": {
+      "ioredis": "^5.11.1"
+    }
+  },
+  "devDependencies": {
+    "@playwright/test":                 "^1.46.0",
+    "@types/node":                      "^24.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser":        "^8.0.0",
+    "@vitest/coverage-v8":              "^3.0.0",
+    "eslint":                           "^9.0.0",
+    "prettier":                         "^3.3.0",
+    "tsx":                              "^4.16.0",
+    "typescript":                       "^5.8.0",
+    "vitest":                           "^3.0.0"
+  }
+}

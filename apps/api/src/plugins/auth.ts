@@ -1,0 +1,25 @@
+// Better Auth — minimal Phase 0 wiring (email/password + dev seed).
+// Social providers are placeholders in .env; we don't enable them yet.
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { prisma } from '../lib/prisma.js';
+import { loadEnv } from '../lib/env.js';
+
+function createAuth() {
+  const env = loadEnv();
+  return betterAuth({
+    database: prismaAdapter(prisma, { provider: 'postgresql' }),
+    secret: env.SESSION_COOKIE_SECRET,
+    baseURL: env.APP_URL,
+    emailAndPassword: { enabled: true },
+    trustedOrigins: [env.APP_URL],
+  });
+}
+
+// Capture the *specialized* instance type so the singleton stays non-null & typed.
+let cached: ReturnType<typeof createAuth> | null = null;
+
+export function getAuth(): ReturnType<typeof createAuth> {
+  if (!cached) cached = createAuth();
+  return cached;
+}

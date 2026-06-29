@@ -1,0 +1,163 @@
+// Prisma 7 — provider = "prisma-client" (bukan "prisma-client-js")
+generator client {
+  provider = "prisma-client"
+  output   = "../generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────
+enum Plan          { FREE PRO ENTERPRISE }
+enum ProjectStatus { PENDING UPLOADING PROCESSING DONE FAILED }
+enum ClipStatus    { PENDING PROCESSING READY FAILED }
+enum PubStatus     { PENDING SCHEDULED PUBLISHING PUBLISHED FAILED }
+enum JobStatus     { QUEUED ACTIVE COMPLETED FAILED DEAD }
+enum JobType       { INGEST TRANSCRIBE SEGMENT RENDER PUBLISH ANALYTICS }
+enum Platform      { TIKTOK INSTAGRAM YOUTUBE TWITTER FACEBOOK }
+enum AspectRatio   { VERTICAL SQUARE HORIZONTAL }
+
+// ─── Models ─────────────────────────────────────────────────
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now())
+
+  projects Project[]
+  accounts SocialAccount[]
+
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  userId      String
+  title       String
+  sourceUrl   String?
+  storagePath String?                           // MinIO key: {userId}/{projectId}/source/...
+  status      ProjectStatus @default(PENDING)
+  durationSec Int?
+  langCode    String?                           // "id" | "en" — hint for Whisper
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  clips Clip[]
+  user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("projects")
+}
+
+model Clip {
+  id          String      @id @default(uuid())
+  projectId   String
+  startSec    Float
+  endSec      Float
+  score       Float
+  status      ClipStatus  @default(PENDING)
+  storagePath String?                           // MinIO key final clip
+  thumbPath   String?                           // MinIO key thumbnail
+  srtPath     String?                           // MinIO key SRT file
+  aspect      AspectRatio @default(VERTICAL)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  captions     Caption[]
+  publications Publication[]
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
+  @@map("clips")
+}
+
+model Caption {
+  id          String    @id @default(uuid())
+  clipId      String
+  platform    Platform
+  body        String
+  hashtags    String[]
+  title       String?                           // YouTube title
+  tags        String[]                          // YouTube tags
+  scheduledAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  clip Clip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  @@unique([clipId, platform])
+  @@map("captions")
+}
+
+model Publication {
+  id               String    @id @default(uuid())
+  clipId           String
+  platform         Platform
+  platformPostId   String?
+  status           PubStatus @default(PENDING)
+  publishedAt      DateTime?
+  scheduledFor     DateTime?
+  errorMsg         String?
+  createdAt        DateTime  @default(now())
+
+  analytics Analytics[]
+  clip      Clip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  @@index([clipId, platform])
+  @@map("publications")
+}
+
+model SocialAccount {
+  id               String    @id @default(uuid())
+  userId           String
+  platform         Platform
+  platformUserId   String
+  encryptedToken   Bytes                        // AES-256-GCM — NEVER plaintext
+  tokenIv          String
+  tokenTag         String
+  encryptedRefresh Bytes?
+  refreshIv        String?
+  refreshTag       String?
+  expiresAt        DateTime?
+  scopes           String[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@map("social_accounts")
+}
+
+model Analytics {
+  id            String   @id @default(uuid())
+  publicationId String
+  pulledAt      DateTime @default(now())
+  views         Int      @default(0)
+  likes         Int      @default(0)
+  comments      Int      @default(0)
+  shares        Int      @default(0)
+  reach         Int?
+
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@index([publicationId, pulledAt])
+  @@map("analytics")
+}
+
+model Job {
+  id       String    @id @default(uuid())
+  bullId   String    @unique                   // BullMQ internal ID
+  type     JobType
+  payload  Json
+  status   JobStatus @default(QUEUED)
+  attempts Int       @default(0)
+  errorMsg String?
+  createdAt DateTime @default(now())
+  ranAt    DateTime?
+
+  @@index([status, createdAt])
+  @@map("jobs")
+}

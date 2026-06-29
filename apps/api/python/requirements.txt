@@ -1,0 +1,2 @@
+# faster-whisper ONLY — never `pip install openai-whisper` (CLAUDE.md).
+faster-whisper>=1.0.0

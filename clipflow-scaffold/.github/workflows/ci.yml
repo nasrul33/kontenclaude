@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: "10" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "24", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @clipflow/db prisma generate
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB:       clipflow_test
+          POSTGRES_USER:     clipflow
+          POSTGRES_PASSWORD: testpass
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: "10" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "24", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @clipflow/db prisma generate
+      - run: pnpm --filter @clipflow/db prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://clipflow:testpass@localhost:5432/clipflow_test
+      - run: pnpm test
+        env:
+          DATABASE_URL:         postgresql://clipflow:testpass@localhost:5432/clipflow_test
+          REDIS_URL:            redis://localhost:6379
+          TOKEN_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+          SESSION_COOKIE_SECRET: testsecret123456789012345678901234
+          NODE_ENV:             test
+
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f infra/Dockerfile.api -t clipflow-api:test .
+      - name: Build Web image
+        run: docker build -f infra/Dockerfile.web -t clipflow-web:test .

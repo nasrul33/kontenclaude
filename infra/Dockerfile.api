@@ -1,0 +1,24 @@
+FROM node:24-alpine AS base
+RUN apk add --no-cache ffmpeg python3 py3-pip
+WORKDIR /app
+COPY package.json pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/
+COPY packages/db/package.json packages/db/
+COPY packages/shared/package.json packages/shared/
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+
+FROM base AS builder
+COPY . .
+RUN pnpm --filter @clipflow/db prisma generate
+RUN pnpm --filter @clipflow/api build
+
+FROM node:24-alpine AS runner
+RUN apk add --no-cache ffmpeg python3 py3-pip
+WORKDIR /app
+COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/packages/db/generated ./packages/db/generated
+COPY --from=builder /app/node_modules ./node_modules
+# Install faster-whisper
+RUN pip3 install faster-whisper --break-system-packages
+EXPOSE 3001
+CMD ["node", "dist/server.js"]

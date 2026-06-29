@@ -1,0 +1,125 @@
+{
+  "model": "claude-sonnet-4-6",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(node *)",
+      "Bash(npx *)",
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git stash *)",
+      "Bash(docker compose *)",
+      "Bash(docker ps)",
+      "Bash(docker logs *)",
+      "Bash(redis-cli *)",
+      "Write(apps/**)",
+      "Write(packages/**)",
+      "Write(infra/**)",
+      "Write(CLAUDE.md)",
+      "Write(AGENTS.md)",
+      "Write(.claude/**)",
+      "Edit(apps/**)",
+      "Edit(packages/**)",
+      "Edit(infra/**)",
+      "Edit(CLAUDE.md)",
+      "Read(**)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~*)",
+      "Bash(* DROP TABLE*)",
+      "Bash(* DROP DATABASE*)",
+      "Bash(* TRUNCATE *)",
+      "Bash(prisma migrate reset)",
+      "Bash(prisma db push --force-reset)",
+      "Bash(docker system prune *)",
+      "Bash(npm publish *)",
+      "Bash(pnpm publish *)",
+      "Write(.env)",
+      "Write(.env.production)",
+      "Write(.env.staging)",
+      "Write(packages/db/prisma/migrations/*.sql)",
+      "Write(packages/db/generated/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh",
+            "timeout": 5,
+            "statusMessage": "Memuat konteks ClipFlow..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/format-ts.sh",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/audit-log.sh",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/typecheck.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/guard-dangerous.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/session-end.sh",
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development",
+    "CLAUDE_PROJECT": "clipflow"
+  }
+}

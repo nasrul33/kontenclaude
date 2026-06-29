@@ -1,0 +1,31 @@
+{
+  "name": "@clipflow/db",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./generated/client.ts",
+  "types": "./generated/client.ts",
+  "exports": {
+    ".": "./generated/client.ts"
+  },
+  "scripts": {
+    "generate":  "prisma generate",
+    "migrate":   "prisma migrate dev --name init",
+    "deploy":    "prisma migrate deploy",
+    "validate":  "prisma validate",
+    "format":    "prisma format",
+    "studio":    "prisma studio"
+  },
+  "dependencies": {
+    "prisma": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "pg": "^8.13.0",
+    "dotenv": "^16.4.5"
+  },
+  "peerDependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.16.0"
+  }
+}

@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Prisma generated
+packages/db/generated/
+
+# Python venv
+apps/api/.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment
+.env
+.env.production
+.env.staging
+.env.local
+# Keep example
+!.env.example
+
+# Temp & uploads
+/tmp/
+uploads/
+*.tmp
+
+# Logs
+*.log
+.claude/ai-edit-audit.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+
+# Certificates
+*.key
+*.pem
+*.p12
+*.crt
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
