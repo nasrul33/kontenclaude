@@ -45,17 +45,19 @@ export async function enqueue<T extends Record<string, unknown>>(
   type: JobType,
   data: T,
   jobId: string,
+  opts: { delayMs?: number } = {},
 ): Promise<void> {
   const existing = await prisma.job.findUnique({ where: { bullId: jobId } });
   if (existing) return;
   await prisma.job.create({
-    // payload only ever carries string ids in Phase 1; safe JSON value.
+    // payload only ever carries string ids; safe JSON value.
     data: { bullId: jobId, type, payload: data as unknown as Record<string, string>, status: 'QUEUED' },
   });
+  const delay = opts.delayMs && opts.delayMs > 0 ? { delay: opts.delayMs } : {};
   // BullMQ's add() uses conditional types (ExtractNameType/ExtractDataType) that are
   // unresolvable while T is generic. Pin to a plain add signature for this one call.
   const q = queue as unknown as {
     add(name: string, data: T, opts: JobsOptions): Promise<unknown>;
   };
-  await q.add(type, data, { ...DEFAULT_JOB_OPTS, jobId });
+  await q.add(type, data, { ...DEFAULT_JOB_OPTS, ...delay, jobId });
 }

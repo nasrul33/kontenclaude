@@ -5,6 +5,8 @@ import multipart from '@fastify/multipart';
 import { loadEnv } from './lib/env.js';
 import { healthRoutes } from './routes/health.js';
 import { projectRoutes } from './routes/projects.js';
+import { publishRoutes } from './routes/publish.js';
+import { connectRoutes } from './routes/connect.js';
 import { getAuth } from './plugins/auth.js';
 
 const env = loadEnv();
@@ -37,6 +39,8 @@ await app.register(multipart, { limits: { fileSize: 500 * 1024 * 1024, files: 1 
 
 await app.register(healthRoutes);
 await app.register(projectRoutes);
+await app.register(publishRoutes);
+await app.register(connectRoutes);
 
 // Better Auth handler — mount under /api/auth/*
 const auth = getAuth();

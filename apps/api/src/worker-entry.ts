@@ -6,6 +6,7 @@ import { startIngestWorker } from './jobs/ingest.worker.js';
 import { startTranscribeWorker } from './jobs/transcribe.worker.js';
 import { startSegmentWorker } from './jobs/segment.worker.js';
 import { startRenderWorker } from './jobs/render.worker.js';
+import { startPublishWorker } from './jobs/publish.worker.js';
 
 loadEnv(); // validate env up-front; throws if anything is missing
 await ensureBuckets();
@@ -16,6 +17,7 @@ const workers = [
   startTranscribeWorker(),
   startSegmentWorker(),
   startRenderWorker(),
+  startPublishWorker(),
 ];
 process.stderr.write(`[worker] started ${workers.length} worker(s)\n`);
 
