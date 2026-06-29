@@ -3,8 +3,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { authClient } from '@/lib/auth-client';
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('dev@clipflow.local');
+export default function RegisterPage() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -13,10 +14,10 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error: err } = await authClient.signIn.email({ email, password });
+    const { error: err } = await authClient.signUp.email({ email, password, name });
     setBusy(false);
     if (err) {
-      setError(err.message ?? 'Sign-in failed');
+      setError(err.message ?? 'Sign-up failed');
       return;
     }
     window.location.href = '/dashboard';
@@ -25,7 +26,16 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-semibold">Sign in</h1>
+        <h1 className="text-2xl font-semibold">Create account</h1>
+        <label className="block">
+          <span className="text-sm opacity-70">Name</span>
+          <input
+            required
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-3 py-2"
+          />
+        </label>
         <label className="block">
           <span className="text-sm opacity-70">Email</span>
           <input
@@ -41,6 +51,7 @@ export default function LoginPage() {
           <input
             type="password"
             required
+            minLength={8}
             value={password}
             onChange={e => setPassword(e.target.value)}
             className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-3 py-2"
@@ -52,12 +63,12 @@ export default function LoginPage() {
           disabled={busy}
           className="w-full rounded-md bg-white text-black px-3 py-2 disabled:opacity-50"
         >
-          {busy ? 'Signing in…' : 'Sign in'}
+          {busy ? 'Creating…' : 'Create account'}
         </button>
         <p className="text-sm opacity-60">
-          No account yet?{' '}
-          <Link href="/register" className="underline">
-            Create one
+          Already have an account?{' '}
+          <Link href="/login" className="underline">
+            Sign in
           </Link>
         </p>
       </form>

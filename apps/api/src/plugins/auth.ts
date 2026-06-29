@@ -10,9 +10,10 @@ function createAuth() {
   return betterAuth({
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
     secret: env.SESSION_COOKIE_SECRET,
-    baseURL: env.APP_URL,
+    // baseURL = where the auth handler is mounted (this API), NOT the web app.
+    baseURL: env.NEXT_PUBLIC_API_URL,
     emailAndPassword: { enabled: true },
-    trustedOrigins: [env.APP_URL],
+    trustedOrigins: [env.APP_URL, env.NEXT_PUBLIC_API_URL],
   });
 }
 

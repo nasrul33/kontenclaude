@@ -4,6 +4,8 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
   APP_URL: z.string().url().default('http://localhost:3000'),
+  // Public origin of THIS api (where Better Auth endpoints are served).
+  NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:3001'),
 
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
